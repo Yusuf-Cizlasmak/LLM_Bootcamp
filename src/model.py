@@ -7,7 +7,41 @@ from typing import Optional, Dict, Any
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+## Hugginface Çekilen Initialization Model
 class TurkishLLM:
+    """
+    TurkishLLM - Türkçe Dil Modeli Arayüzü
+    Bu sınıf, Türkçe Llama 8B modelini yüklemek ve rol tabanlı yanıtlarla 
+    metin üretimi için kapsamlı bir arayüz sağlar.
+    
+    Özellikler:
+        model: Yüklenmiş Llama model örneği
+        model_name (str): Hugging Face model deposu tanımlayıcısı
+        inference_params (dict): Metin üretimi için yapılandırma parametreleri
+        role_prompts (dict): Farklı roller için önceden tanımlanmış sistem promptları
+    
+    Metodlar:
+        __init__(): Modeli başlatır ve belirtilen parametrelerle yükler
+        _load_model(): Llama modelini CPU/GPU optimizasyonu ile yükleyen dahili metod
+        is_model_loaded(): Modelin başarıyla yüklenip kullanıma hazır olup olmadığını kontrol eder
+        get_available_roles(): Mevcut rol yapılandırmalarının listesini döndürür
+        _construct_prompt(): Rol tabanlı promptları doğru formatlama ile oluşturan dahili metod
+        generate(): Minimal yapılandırma ile temel metin üretimi
+        generate_response(): Rol tabanlı sistem promptları ile gelişmiş metin üretimi
+    
+    Özellikler:
+        - Mevcut olduğunda GPU hızlandırma desteği
+        - Rol tabanlı yanıt üretimi (satış, özel, varsayılan)
+        - Türkçe dil optimizasyonu
+        - Yapılandırılabilir çıkarım parametreleri
+        - Hata yönetimi ve günlükleme
+        - Bağlam penceresi ve toplu işleme optimizasyonu
+    
+    Kullanım:
+        llm = TurkishLLM()
+        yanit = llm.generate_response("Merhaba", role="sales")
+    """
     def __init__(self):
         """Turkish Llama 8B model initialization"""
         self.model = None
@@ -46,9 +80,6 @@ class TurkishLLM:
         
         # Role-based system prompts
         self.role_prompts = {
-            "turkcell": "Sen Turkcell müşteri hizmetleri asistanısın. Kibar, profesyonel ve çözüm odaklı ol. Müşteri memnuniyetini ön planda tut.",
-            "support": "Sen yardımsever bir destek asistanısın. Kullanıcıların sorunlarına pratik ve anlaşılır çözümler sun.",
-            "tech": "Sen teknik destek uzmanısın. Teknik sorunları adım adım, anlaşılır bir dille çöz.",
             "sales": "Sen satış danışmanısın. Ürün ve hizmetler hakkında bilgilendirici ol, müşteri ihtiyaçlarına uygun öneriler sun.",
             "custom": "Sen yardımcı bir yapay zeka asistanısın.",
             "default": self.inference_params["pre_prompt"]
@@ -61,15 +92,15 @@ class TurkishLLM:
             raise
 
     def _load_model(self):
-        """Load the Llama model"""
+        """Model'i yükler ve yapılandırır"""
         try:
             logger.info(f"Loading model: {self.model_name}")
             
             # Model parametreleri
             model_kwargs = {
                 "repo_id": self.model_name,
-                "filename": "*Q4_K.gguf",
-                "verbose": False,
+                "filename": "*Q4_K.gguf", # Model dosya adı
+                "verbose": False, # Verbose logging
                 "n_ctx": 2048,  # Context window
                 "n_batch": 512,  # Batch size for prompt processing
                 "n_threads": os.cpu_count() or 4,  # CPU threads
@@ -93,15 +124,24 @@ class TurkishLLM:
             raise
 
     def is_model_loaded(self) -> bool:
-        """Check if model is loaded"""
+        """Modelin başarıyla yüklenip kullanıma hazır olup olmadığını kontrol eder"""
         return self.model is not None
 
     def get_available_roles(self) -> list:
-        """Return available roles"""
+        """Mevcut rollerin listesini döndürür"""
         return list(self.role_prompts.keys())
 
     def _construct_prompt(self, query: str, role: str = "default") -> str:
-        """Construct prompt based on role"""
+
+
+        """        Rol tabanlı promptları doğru formatlama ile oluşturur
+        Args:
+            query (str): Kullanıcı sorgusu
+            role (str): Kullanıcı rolü (varsayılan: "default")
+        
+        Returns:
+            str: Oluşturulmuş prompt
+        """
         system_prompt = self.role_prompts.get(role, self.role_prompts["default"])
         
         prompt = (
@@ -116,12 +156,12 @@ class TurkishLLM:
         return prompt
 
     def generate(self, text: str, max_length: int = 256, temperature: float = 0.7) -> str:
-        """Generate text using the base model"""
+        """Modeli kullanarak metin üretir"""
         if not self.is_model_loaded():
-            raise RuntimeError("Model is not loaded")
+            raise RuntimeError("Model yüklenmedi")
         
         try:
-            # Simple generation without role
+            # Rol olmadan basit üretim
             prompt = self._construct_prompt(text, role="default")
             
             response = self.model(
@@ -143,19 +183,19 @@ class TurkishLLM:
 
     def generate_response(self, query: str, max_length: int = 256, 
                          temperature: float = 0.7, role: str = "default") -> str:
-        """Generate response based on role"""
+        """Rol tabanlı yanıt üretir"""
         if not self.is_model_loaded():
-            raise RuntimeError("Model is not loaded")
-        
+            raise RuntimeError("Model yüklenmedi")
+
         try:
-            # Construct role-based prompt
+            # Rol tabanlı prompt oluştur
             prompt = self._construct_prompt(query, role)
-            
-            # Log for debugging
+
+            # Debugging için günlük kaydı
             logger.debug(f"Using role: {role}")
             logger.debug(f"Prompt length: {len(prompt)} characters")
-            
-            # Generate response
+
+            # Yanıtı oluştur
             response = self.model(
                 prompt,
                 max_tokens=max_length,
@@ -167,8 +207,8 @@ class TurkishLLM:
             )
             
             generated_text = response['choices'][0]['text'].strip()
-            
-            # Clean up response
+
+            # Yanıtı temizle
             generated_text = generated_text.replace("<|eot_id|>", "").strip()
             
             return generated_text if generated_text else "Yanıt üretilemedi."
@@ -177,7 +217,7 @@ class TurkishLLM:
             logger.error(f"Generation error for role {role}: {e}")
             return f"Üretim hatası: {str(e)}"
 
-# Test code
+# Test için modeli başlat
 if __name__ == "__main__":
     try:
         print("Turkish Llama 8B Model Test")

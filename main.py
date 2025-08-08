@@ -83,11 +83,7 @@ async def get_available_roles():
     available_roles = llm_model.get_available_roles()
     
     role_descriptions = {
-        "turkcell": "Turkcell çağrı merkezi asistanı - kibar, profesyonel müşteri hizmetleri",
-        "support": "Genel müşteri hizmetleri asistanı - yardımsever ve çözüm odaklı",
-        "tech": "Teknik destek uzmanı - teknik sorunlar için adım adım çözümler",
         "sales": "Satış danışmanı - ürün/hizmet önerileri ve satış desteği",
-        "default": "Varsayılan mod - özelleştirilmiş genel yanıtlar",
         "custom": "Özel prompt template - basit soru-cevap formatı"
     }
     
@@ -146,30 +142,9 @@ async def generate_text_with_role(role: str, request: QueryRequest):
         )
 
 # Backward compatibility için eski endpoint'ler
-@app.post("/generate", response_model=QueryResponse)
-async def generate_default(request: QueryRequest):
-    """Varsayılan metin üretimi (backward compatibility)"""
-    return await generate_text_with_role("default", request)
 
-@app.post("/generate-turkcell", response_model=QueryResponse)
-async def generate_turkcell(request: QueryRequest):
-    """Turkcell asistanı (backward compatibility)"""
-    return await generate_text_with_role("turkcell", request)
 
-@app.post("/generate-support", response_model=QueryResponse)
-async def generate_support(request: QueryRequest):
-    """Destek asistanı (backward compatibility)"""
-    return await generate_text_with_role("support", request)
 
-@app.post("/generate-tech", response_model=QueryResponse)
-async def generate_tech(request: QueryRequest):
-    """Teknik destek (backward compatibility)"""
-    return await generate_text_with_role("tech", request)
-
-@app.post("/generate-sales", response_model=QueryResponse)
-async def generate_sales(request: QueryRequest):
-    """Satış danışmanı (backward compatibility)"""
-    return await generate_text_with_role("sales", request)
 
 @app.post("/generate-custom", response_model=QueryResponse)
 async def generate_custom(request: QueryRequest):
