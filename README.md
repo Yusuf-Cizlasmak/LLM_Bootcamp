@@ -75,8 +75,8 @@ curl -X POST "http://localhost:8000/generate/sales" \
 ## Sistemin Çalıştığına dair görseller
 
 ### Sistem çıktısı -1
-![alt text](image.png)
+![alt text](assets/image.png)
 
 
 ### Sistem çıktısı -2
-![alt text](image-1.png)
+![alt text](assets/image-1.png)
